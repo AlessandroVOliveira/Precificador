@@ -1,8 +1,8 @@
 import React from 'react';
-import { DollarSign, FileText, Settings, Github } from 'lucide-react';
+import { DollarSign, FileText, Settings, ExternalLink } from 'lucide-react';
 import './Shell.css';
 
-const Shell = ({ children }) => {
+const Shell = ({ children, onSettingsClick }) => {
   return (
     <div className="shell-container">
       <header className="shell-header">
@@ -18,7 +18,14 @@ const Shell = ({ children }) => {
             <FileText size={18} />
             <span>Notas Fiscais</span>
           </a>
-          <a href="#" className="nav-link">
+          <a 
+            href="#" 
+            className="nav-link"
+            onClick={(e) => {
+              e.preventDefault();
+              onSettingsClick?.();
+            }}
+          >
             <Settings size={18} />
             <span>Configurações</span>
           </a>
@@ -26,7 +33,7 @@ const Shell = ({ children }) => {
 
         <div className="header-actions">
           <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="github-link">
-            <Github size={20} />
+            <ExternalLink size={20} />
           </a>
         </div>
       </header>

@@ -224,7 +224,8 @@ function App() {
                                       onChange={(e) => {
                                         const val = parseFloat(e.target.value) || 0;
                                         const maxAllowed = 99.9 - (fixedCosts.percent * 100) - salesTax;
-                                        updateItemMargin(item.id, Math.max(0, Math.min(val, maxAllowed)));
+                                        const finalValue = Math.max(0, Math.min(val, maxAllowed));
+                                        updateItemMargin(item.id, Number(finalValue.toFixed(1)));
                                       }}
                                     />
                                     <span>%</span>

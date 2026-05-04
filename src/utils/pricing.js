@@ -12,11 +12,13 @@
  * @returns {number} The suggested price.
  */
 export const calculateSuggestedPrice = (cost, fixedCostPercent, salesTaxPercent, profitMarginPercent) => {
+  if (cost === undefined || cost === null) return 0;
+  
   const totalEncargos = fixedCostPercent + salesTaxPercent + profitMarginPercent;
   
   // Prevent division by zero or negative divisor
   if (totalEncargos >= 1) {
-    return Infinity; 
+    return null; // Return null to indicate invalid calculation
   }
   
   return cost / (1 - totalEncargos);

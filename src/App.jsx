@@ -5,6 +5,7 @@ import SettingsModal from './components/features/SettingsModal';
 import { Upload, Info, Calculator, Trash2, ChevronRight, LayoutDashboard, ListChecks, Settings } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { parseNFeXML } from './utils/xmlParser';
+import { calculateSuggestedPrice } from './utils/pricing';
 import './App.css';
 
 function App() {
@@ -171,7 +172,12 @@ function App() {
                         fixedCost: fixedCosts.percent * 100,
                         salesTax: salesTax,
                         profitMargin: itemMargin,
-                        price: netCostUnitary / (1 - (fixedCosts.percent + (salesTax / 100) + (itemMargin / 100)))
+                        price: calculateSuggestedPrice(
+                          netCostUnitary, 
+                          fixedCosts.percent, 
+                          salesTax / 100, 
+                          itemMargin / 100
+                        )
                       };
                       
                       return (
@@ -208,17 +214,30 @@ function App() {
                               {marginType === 'global' ? (
                                 <span>{((fixedCosts.percent * 100) + salesTax + globalMargin).toFixed(1)}%</span>
                               ) : (
-                                <div className="inline-input">
-                                  <input 
-                                    type="number" 
-                                    value={itemMargin} 
-                                    onChange={(e) => updateItemMargin(item.id, parseFloat(e.target.value) || 0)}
-                                  />
-                                  <span>%</span>
-                                </div>
+                                  <div className="inline-input">
+                                    <input 
+                                      type="number" 
+                                      value={itemMargin} 
+                                      min="0"
+                                      max={(99.9 - (fixedCosts.percent * 100) - salesTax).toFixed(1)}
+                                      step="0.1"
+                                      onChange={(e) => {
+                                        const val = parseFloat(e.target.value) || 0;
+                                        const maxAllowed = 99.9 - (fixedCosts.percent * 100) - salesTax;
+                                        updateItemMargin(item.id, Math.max(0, Math.min(val, maxAllowed)));
+                                      }}
+                                    />
+                                    <span>%</span>
+                                  </div>
                               )}
                             </td>
-                            <td className="highlight-price">R$ {pricing.price.toFixed(2)}</td>
+                            <td className={`highlight-price ${pricing.price === null ? 'invalid-price' : ''}`}>
+                              {pricing.price === null ? (
+                                <span title="A soma dos encargos e margem não pode ser 100% ou mais">⚠️ Inválido</span>
+                              ) : (
+                                `R$ ${pricing.price.toFixed(2)}`
+                              )}
+                            </td>
                             <td>
                               <button 
                                 className={`icon-button ${expandedItem === item.id ? 'expanded' : ''}`}

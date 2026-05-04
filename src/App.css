@@ -414,3 +414,15 @@
 .detail-row {
   background: rgba(255, 255, 255, 0.03);
 }
+
+.invalid-price {
+  color: #fb7185 !important;
+  font-size: 0.9rem !important;
+}
+
+.invalid-price span {
+  cursor: help;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

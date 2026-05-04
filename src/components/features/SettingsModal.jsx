@@ -149,7 +149,16 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
                     type="number" 
                     name="globalMargin"
                     value={formData.globalMargin}
-                    onChange={handleChange}
+                    min="0"
+                    max={(99.9 - parseFloat(calculatedFixedPercent) - formData.salesTax).toFixed(1)}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      const maxAllowed = 99.9 - parseFloat(calculatedFixedPercent) - formData.salesTax;
+                      setFormData(prev => ({
+                        ...prev,
+                        globalMargin: Math.max(0, Math.min(val, maxAllowed))
+                      }));
+                    }}
                     placeholder="0"
                   />
                   <span>%</span>

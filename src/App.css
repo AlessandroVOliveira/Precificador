@@ -426,3 +426,23 @@
   align-items: center;
   gap: 4px;
 }
+.mini-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.mini-input input {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+}
+
+.accent-text .value {
+  color: var(--accent) !important;
+}

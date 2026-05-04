@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import GlassCard from '../ui/GlassCard';
-import { X, Calculator, Percent, TrendingUp } from 'lucide-react';
+import { X, Calculator, Percent, TrendingUp, Settings2 } from 'lucide-react';
 import './SettingsModal.css';
 
 const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
@@ -11,7 +11,8 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
     salesTax: 0,
     globalMargin: 0,
     recoverICMS: false,
-    recoverPISCOFINS: false
+    recoverPISCOFINS: false,
+    markupMethod: 'divisor'
   });
 
   useEffect(() => {
@@ -22,7 +23,8 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
         salesTax: initialData.salesTax || 0,
         globalMargin: initialData.globalMargin || 0,
         recoverICMS: initialData.recoverICMS || false,
-        recoverPISCOFINS: initialData.recoverPISCOFINS || false
+        recoverPISCOFINS: initialData.recoverPISCOFINS || false,
+        markupMethod: initialData.markupMethod || 'divisor'
       });
     }
   }, [isOpen, initialData]);
@@ -49,7 +51,8 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
       salesTax: formData.salesTax,
       globalMargin: formData.globalMargin,
       recoverICMS: formData.recoverICMS,
-      recoverPISCOFINS: formData.recoverPISCOFINS
+      recoverPISCOFINS: formData.recoverPISCOFINS,
+      markupMethod: formData.markupMethod
     });
     onClose();
   };
@@ -84,10 +87,16 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
           >
             <Percent size={18} /> Impostos e Lucro
           </button>
+          <button 
+            className={`tab-button ${activeTab === 'method' ? 'active' : ''}`}
+            onClick={() => setActiveTab('method')}
+          >
+            <Settings2 size={18} /> Método
+          </button>
         </div>
 
         <div className="modal-body">
-          {activeTab === 'costs' ? (
+          {activeTab === 'costs' && (
             <div className="settings-section">
               <p className="section-desc">Informe suas despesas mensais para calcular o impacto no preço unitário.</p>
               
@@ -124,7 +133,9 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
                 <strong>{calculatedFixedPercent}%</strong>
               </div>
             </div>
-          ) : (
+          )}
+
+          {activeTab === 'tax' && (
             <div className="settings-section">
               <p className="section-desc">Configure as taxas de venda e a margem de lucro padrão.</p>
 
@@ -150,15 +161,22 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
                     name="globalMargin"
                     value={formData.globalMargin}
                     min="0"
-                    max={(99.9 - parseFloat(calculatedFixedPercent) - formData.salesTax).toFixed(1)}
+                    max={formData.markupMethod === 'divisor' ? (99.9 - parseFloat(calculatedFixedPercent) - formData.salesTax).toFixed(1) : 1000}
                     onChange={(e) => {
                       const val = parseFloat(e.target.value) || 0;
-                      const maxAllowed = 99.9 - parseFloat(calculatedFixedPercent) - formData.salesTax;
-                      const finalValue = Math.max(0, Math.min(val, maxAllowed));
-                      setFormData(prev => ({
-                        ...prev,
-                        globalMargin: Number(finalValue.toFixed(1))
-                      }));
+                      if (formData.markupMethod === 'divisor') {
+                        const maxAllowed = 99.9 - parseFloat(calculatedFixedPercent) - formData.salesTax;
+                        const finalValue = Math.max(0, Math.min(val, maxAllowed));
+                        setFormData(prev => ({
+                          ...prev,
+                          globalMargin: Number(finalValue.toFixed(1))
+                        }));
+                      } else {
+                        setFormData(prev => ({
+                          ...prev,
+                          globalMargin: val
+                        }));
+                      }
                     }}
                     placeholder="0"
                   />
@@ -188,6 +206,38 @@ const SettingsModal = ({ isOpen, onClose, initialData, onSave }) => {
                     />
                     Recuperar PIS/COFINS
                   </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'method' && (
+            <div className="settings-section">
+              <p className="section-desc">Escolha como o sistema deve calcular o preço de venda.</p>
+              
+              <div className="method-selection">
+                <div 
+                  className={`method-option ${formData.markupMethod === 'divisor' ? 'active' : ''}`}
+                  onClick={() => setFormData(prev => ({ ...prev, markupMethod: 'divisor' }))}
+                >
+                  <div className="method-header">
+                    <div className="radio-circle"></div>
+                    <strong>Markup Divisor</strong>
+                  </div>
+                  <p>O lucro e os impostos são calculados sobre o <strong>preço de venda</strong>. É o método mais seguro para garantir a margem líquida.</p>
+                  <div className="formula-box">Preço = Custo / (1 - % Total)</div>
+                </div>
+
+                <div 
+                  className={`method-option ${formData.markupMethod === 'multiplier' ? 'active' : ''}`}
+                  onClick={() => setFormData(prev => ({ ...prev, markupMethod: 'multiplier' }))}
+                >
+                  <div className="method-header">
+                    <div className="radio-circle"></div>
+                    <strong>Markup Multiplicador</strong>
+                  </div>
+                  <p>O lucro e impostos são aplicados como um acréscimo sobre o <strong>custo de aquisição</strong>. Mais simples e rápido.</p>
+                  <div className="formula-box">Preço = Custo * (1 + % Total)</div>
                 </div>
               </div>
             </div>

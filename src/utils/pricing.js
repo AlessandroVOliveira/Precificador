@@ -4,9 +4,9 @@
  */
 
 /**
- * Calculates the suggested selling price.
+ * Calculates the suggested selling price using Markup Divisor.
  * @param {number} cost - The unitary cost of the product.
- * @param {number} fixedCostPercent - Percentage of fixed costs (decimal, e.g., 0.20 for 20%).
+ * @param {number} fixedCostPercent - Percentage of fixed costs (decimal).
  * @param {number} salesTaxPercent - Percentage of sales taxes/fees (decimal).
  * @param {number} profitMarginPercent - Percentage of desired net profit (decimal).
  * @returns {number} The suggested price.
@@ -25,6 +25,22 @@ export const calculateSuggestedPrice = (cost, fixedCostPercent, salesTaxPercent,
 };
 
 /**
+ * Calculates the suggested selling price using Markup Multiplier.
+ * Formula: Price = Cost * (1 + % Total Encargos)
+ * @param {number} cost - The unitary cost of the product.
+ * @param {number} fixedCostPercent - Percentage of fixed costs (decimal).
+ * @param {number} salesTaxPercent - Percentage of sales taxes/fees (decimal).
+ * @param {number} profitMarginPercent - Percentage of desired net profit (decimal).
+ * @returns {number} The suggested price.
+ */
+export const calculateSuggestedPriceMultiplier = (cost, fixedCostPercent, salesTaxPercent, profitMarginPercent) => {
+  if (cost === undefined || cost === null) return 0;
+  
+  const totalEncargos = fixedCostPercent + salesTaxPercent + profitMarginPercent;
+  return cost * (1 + totalEncargos);
+};
+
+/**
  * Calculates the markup divisor decimal from its components.
  */
 export const getMarkupDivisor = (fixedCostPercent, salesTaxPercent, profitMarginPercent) => {
@@ -40,3 +56,4 @@ export const calculateFixedCostPercentage = (totalFixedCosts, expectedRevenue) =
   if (!expectedRevenue || expectedRevenue === 0) return 0;
   return totalFixedCosts / expectedRevenue;
 };
+

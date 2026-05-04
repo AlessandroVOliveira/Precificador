@@ -2,10 +2,10 @@ import React, { useState, useRef } from 'react';
 import Shell from './components/layout/Shell';
 import GlassCard from './components/ui/GlassCard';
 import SettingsModal from './components/features/SettingsModal';
-import { Upload, Info, Calculator, Trash2, ChevronRight, LayoutDashboard, ListChecks, Settings } from 'lucide-react';
+import { Upload, Info, Calculator, Trash2, ChevronRight, LayoutDashboard, ListChecks, Settings, Truck } from 'lucide-react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { parseNFeXML } from './utils/xmlParser';
-import { calculateSuggestedPrice } from './utils/pricing';
+import { calculateSuggestedPrice, calculateSuggestedPriceMultiplier } from './utils/pricing';
 import './App.css';
 
 function App() {
@@ -24,6 +24,8 @@ function App() {
   const [recoverICMS, setRecoverICMS] = useLocalStorage('precificador_recover_icms', false);
   const [recoverPISCOFINS, setRecoverPISCOFINS] = useLocalStorage('precificador_recover_piscofins', false);
   const [itemMargins, setItemMargins] = useLocalStorage('precificador_item_margins', {});
+  const [markupMethod, setMarkupMethod] = useLocalStorage('precificador_markup_method', 'divisor');
+  const [externalCosts, setExternalCosts] = useState(0);
   
   const fileInputRef = useRef(null);
 
@@ -122,6 +124,12 @@ function App() {
               </GlassCard>
 
               <GlassCard className="config-mini-card">
+                <h3><Settings size={18} /> Método</h3>
+                <div className="config-value">{markupMethod === 'divisor' ? 'Divisor' : 'Multiplicador'}</div>
+                <button className="text-button" onClick={() => setFixedCostsModalOpen(true)}>Alterar</button>
+              </GlassCard>
+
+              <GlassCard className="config-mini-card">
                 <h3><Info size={18} /> Modo de Margem</h3>
                 <div className="toggle-group">
                   <button 
@@ -142,6 +150,19 @@ function App() {
                 ) : (
                   <div className="config-label">Ajuste na tabela</div>
                 )}
+              </GlassCard>
+              <GlassCard className="config-mini-card">
+                <h3><Truck size={18} /> Frete/Encargos Externos</h3>
+                <div className="input-with-prefix mini-input">
+                  <span>R$</span>
+                  <input 
+                    type="number" 
+                    value={externalCosts} 
+                    onChange={(e) => setExternalCosts(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="config-label">Rateado por valor</div>
               </GlassCard>
             </div>
 
@@ -165,14 +186,21 @@ function App() {
                       let credits = 0;
                       if (recoverICMS) credits += item.taxes.vICMS;
                       if (recoverPISCOFINS) credits += (item.taxes.vPIS + item.taxes.vCOFINS);
+
+                      // Calculate proportional external cost (freight/other)
+                      const totalBaseCost = items.reduce((acc, i) => acc + i.totalPrice, 0);
+                      const itemProportionalExternal = totalBaseCost > 0 ? (item.totalPrice / totalBaseCost) * externalCosts : 0;
+                      const externalCostUnitary = itemProportionalExternal / item.quantity;
                       
-                      const netCostUnitary = item.costUnitary - (credits / item.quantity);
+                      const netCostUnitary = (item.costUnitary + externalCostUnitary) - (credits / item.quantity);
+                      
+                      const calcFn = markupMethod === 'divisor' ? calculateSuggestedPrice : calculateSuggestedPriceMultiplier;
                       
                       const pricing = {
                         fixedCost: fixedCosts.percent * 100,
                         salesTax: salesTax,
                         profitMargin: itemMargin,
-                        price: calculateSuggestedPrice(
+                        price: calcFn(
                           netCostUnitary, 
                           fixedCosts.percent, 
                           salesTax / 100, 
@@ -198,12 +226,20 @@ function App() {
                                   ></div>
                                   <div 
                                     className="comp-segment comp-tax" 
-                                    style={{ width: `${((pricing.fixedCost + pricing.salesTax) / 100) * 100}%` }}
+                                    style={{ 
+                                      width: `${markupMethod === 'divisor' 
+                                        ? (pricing.fixedCost + pricing.salesTax) 
+                                        : (pricing.fixedCost + pricing.salesTax) * (netCostUnitary / pricing.price)}%` 
+                                    }}
                                     title="Encargos (Fixo + Impostos)"
                                   ></div>
                                   <div 
                                     className="comp-segment comp-profit" 
-                                    style={{ width: `${(pricing.profitMargin / 100) * 100}%` }}
+                                    style={{ 
+                                      width: `${markupMethod === 'divisor' 
+                                        ? pricing.profitMargin 
+                                        : pricing.profitMargin * (netCostUnitary / pricing.price)}%` 
+                                    }}
                                     title="Margem de Lucro"
                                   ></div>
                                 </div>
@@ -219,13 +255,17 @@ function App() {
                                       type="number" 
                                       value={itemMargin} 
                                       min="0"
-                                      max={(99.9 - (fixedCosts.percent * 100) - salesTax).toFixed(1)}
+                                      max={markupMethod === 'divisor' ? (99.9 - (fixedCosts.percent * 100) - salesTax).toFixed(1) : 1000}
                                       step="0.1"
                                       onChange={(e) => {
                                         const val = parseFloat(e.target.value) || 0;
-                                        const maxAllowed = 99.9 - (fixedCosts.percent * 100) - salesTax;
-                                        const finalValue = Math.max(0, Math.min(val, maxAllowed));
-                                        updateItemMargin(item.id, Number(finalValue.toFixed(1)));
+                                        if (markupMethod === 'divisor') {
+                                          const maxAllowed = 99.9 - (fixedCosts.percent * 100) - salesTax;
+                                          const finalValue = Math.max(0, Math.min(val, maxAllowed));
+                                          updateItemMargin(item.id, Number(finalValue.toFixed(1)));
+                                        } else {
+                                          updateItemMargin(item.id, val);
+                                        }
                                       }}
                                     />
                                     <span>%</span>
@@ -266,8 +306,12 @@ function App() {
                                       <span className="value">R$ {(item.taxes.vICMSST / item.quantity).toFixed(2)}</span>
                                     </div>
                                     <div className="breakdown-item">
-                                      <span className="label">Frete Unit.</span>
+                                      <span className="label">Frete Unit. (Nota)</span>
                                       <span className="value">R$ {((item.extraCosts - item.taxes.vIPI - item.taxes.vICMSST) / item.quantity).toFixed(2)}</span>
+                                    </div>
+                                    <div className="breakdown-item accent-text">
+                                      <span className="label">Encargos Externos (Rateio)</span>
+                                      <span className="value">R$ {externalCostUnitary.toFixed(2)}</span>
                                     </div>
                                     <div className="breakdown-divider"></div>
                                     <div className="breakdown-item highlight">
@@ -308,7 +352,8 @@ function App() {
           globalMargin,
           salesTax,
           recoverICMS,
-          recoverPISCOFINS
+          recoverPISCOFINS,
+          markupMethod
         }}
         onSave={(data) => {
           setFixedCosts(data.fixedCosts);
@@ -316,6 +361,7 @@ function App() {
           setSalesTax(data.salesTax);
           setRecoverICMS(data.recoverICMS);
           setRecoverPISCOFINS(data.recoverPISCOFINS);
+          setMarkupMethod(data.markupMethod);
         }}
       />
     </Shell>
